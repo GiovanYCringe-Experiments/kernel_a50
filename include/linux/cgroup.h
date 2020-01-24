@@ -57,6 +57,7 @@ struct css_task_iter {
 	struct list_head		*tasks_head;
 	struct list_head		*mg_tasks_head;
 
+	struct list_head		*cur_tasks_head;
 	struct css_set			*cur_cset;
 	struct css_set			*cur_dcset;
 	struct task_struct		*cur_task;
