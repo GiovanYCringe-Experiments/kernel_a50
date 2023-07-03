@@ -4046,16 +4046,10 @@ static void css_task_iter_advance_css_set(struct css_task_iter *it)
 		}
 	} while (!css_set_populated(cset));
 
-	if (!list_empty(&cset->tasks)) {
+	if (!list_empty(&cset->tasks))
 		it->task_pos = cset->tasks.next;
-		it->cur_tasks_head = &cset->tasks;
-	} else if (!list_empty(&cset->mg_tasks)) {
+	else
 		it->task_pos = cset->mg_tasks.next;
-		it->cur_tasks_head = &cset->mg_tasks;
-	} else {
-		it->task_pos = cset->dying_tasks.next;
-		it->cur_tasks_head = &cset->dying_tasks;
-	}
 
 	it->tasks_head = &cset->tasks;
 	it->mg_tasks_head = &cset->mg_tasks;
@@ -4098,15 +4092,10 @@ repeat:
 		 */
 		next = it->task_pos->next;
 
-		if (it->task_pos == it->tasks_head) {
-			it->task_pos = it->mg_tasks_head->next;
-			it->cur_tasks_head = it->mg_tasks_head;
-		}
-		if (it->task_pos == it->mg_tasks_head) {
-			it->task_pos = it->dying_tasks_head->next;
-			it->cur_tasks_head = it->dying_tasks_head;
-		}
-		if (it->task_pos == it->dying_tasks_head)
+		if (next == it->tasks_head)
+			next = it->mg_tasks_head->next;
+
+		if (next == it->mg_tasks_head)
 			css_task_iter_advance_css_set(it);
 		else
 			it->task_pos = next;
@@ -4115,25 +4104,11 @@ repeat:
 		css_task_iter_advance_css_set(it);
 	}
 
-	if (!it->task_pos)
-		return;
-
-	task = list_entry(it->task_pos, struct task_struct, cg_list);
-
-	if (it->flags & CSS_TASK_ITER_PROCS) {
-		/* if PROCS, skip over tasks which aren't group leaders */
-		if (!thread_group_leader(task))
-			goto repeat;
-
-		/* and dying leaders w/o live member threads */
-		if (it->cur_tasks_head == it->dying_tasks_head &&
-		    !atomic_read(&task->signal->live))
-			goto repeat;
-	} else {
-		/* skip all dying ones */
-		if (it->cur_tasks_head == it->dying_tasks_head)
-			goto repeat;
-	}
+	/* if PROCS, skip over tasks which aren't group leaders */
+	if ((it->flags & CSS_TASK_ITER_PROCS) && it->task_pos &&
+	    !thread_group_leader(list_entry(it->task_pos, struct task_struct,
+					    cg_list)))
+		goto repeat;
 }
 
 /**
